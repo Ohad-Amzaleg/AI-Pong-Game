@@ -17,34 +17,36 @@ class PongGame:
         self.right_paddle = self.game.right_paddle
         self.ball = self.game.ball 
         
-    def test_ai(self,genome,config):
+    def test_ai(self,net):
         # creating the neural network 
-        net = neat.nn.FeedForwardNetwork.create(genome,config)
         
         run= True
         clock = pygame.time.Clock()
         while run:
             clock.tick(60)
+            
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     run = False 
                     break
                 
+            output = net.activate((self.right_paddle.y, abs(
+                self.right_paddle.x - self.ball.x), self.ball.y))     
+   
+            self.ai_paddle_move(output=output,left=False)         
+            
             keys = pygame.key.get_pressed()
             if keys[pygame.K_w] :
-                game.move_paddle(left=True,up=True)
+                self.game.move_paddle(left=True,up=True)
             
             if keys[pygame.K_s] :
-                game.move_paddle(left=True,up=False)
-            
-            output = net.activate((self.right_paddle.y,self.ball.y,abs(self.right_paddle.x -self.ball.x)))            
-            self.ai_paddle_move(output,True)        
-                
-            game.loop()
-            game.draw(True,False)
+                self.game.move_paddle(left=True,up=False)
+               
+            self.game.loop()
+            self.game.draw(draw_score=True)
             pygame.display.update()
             
-        pygame.quit()
+       
         
     def train_ai(self,genome1,genome2,config):        
             net1 = neat.nn.FeedForwardNetwork.create(genome1,config)
@@ -111,16 +113,23 @@ def run_neat(config):
     # Create a check point of the current status of the neural network 
     p.add_reporter(neat.Checkpointer(1))
     
-    winner = p.run(eval_genomes,50)
-    with open("best.pickle","wb") as f:      
-        pickle.dump(winner,f)
+    winner = p.run(eval_genomes, 50)
+    with open("best.pickle", "wb") as f:
+        pickle.dump(winner, f)
 
-def test_ai(config):
-    with open("best.pickle","wb") as f:
+
+def test_best_network(config):
+    with open("best.pickle", "rb") as f:
         winner = pickle.load(f)
-    game = PongGame(window,width,height)
-    game.test_ai(winner,config)
-    
+    winner_net = neat.nn.FeedForwardNetwork.create(winner, config)
+
+    width, height = 700, 500
+    win = pygame.display.set_mode((width, height))
+    pygame.display.set_caption("Pong")
+    pong = PongGame(win, width, height)
+    pong.test_ai(winner_net)
+
+
     
 if __name__ == "__main__":
     local_dir = os.path.dirname(__file__)
@@ -129,4 +138,4 @@ if __name__ == "__main__":
     config = neat.Config(neat.DefaultGenome,neat.DefaultReproduction,neat.DefaultSpeciesSet,neat.DefaultStagnation,config_path)
 
     # run_neat(config)
-    test_ai(config)
+    test_best_network(config)
