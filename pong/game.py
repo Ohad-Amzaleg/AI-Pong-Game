@@ -11,6 +11,7 @@ class GameInformation:
         self.right_hits = right_hits
         self.left_score = left_score
         self.right_score = right_score
+        
 
 
 class Game:

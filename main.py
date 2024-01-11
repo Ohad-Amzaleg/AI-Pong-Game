@@ -3,6 +3,7 @@ from pong import Game
 import neat
 import os
 import pickle
+import time
 
 width, height = 700, 500 
 window = pygame.display.set_mode((width,height))
@@ -16,6 +17,7 @@ class PongGame:
         self.left_paddle = self.game.left_paddle
         self.right_paddle = self.game.right_paddle
         self.ball = self.game.ball 
+
         
     def test_ai(self,net):
         # creating the neural network 
@@ -53,6 +55,7 @@ class PongGame:
             net2 = neat.nn.FeedForwardNetwork.create(genome2,config)
             
             run = True 
+            start_time = time.time()  # Get the initial time
             while run:
                 for event in pygame.event.get():
                     if event.type == pygame.QUIT:
@@ -69,9 +72,10 @@ class PongGame:
         
                 self.game.draw(draw_score=False,draw_hits=True)
                 pygame.display.update()
+                duration = (time.time()-start_time)
                 # If either one of the paddels missed the ball or the AI succeed 50 times we can finish         
-                if game_info.left_score >=1 or game_info.right_score >=1 or game_info.left_hits > 50:
-                    self.calculate_fitness(genome1,genome2,game_info)
+                if game_info.right_score >= 1 or game_info.left_score >= 1 or game_info.left_hits>50:
+                    self.calculate_fitness(genome1,genome2,game_info,duration)
                     break
             
     def ai_paddle_move(self,output,left):
@@ -87,11 +91,14 @@ class PongGame:
             self.game.move_paddle(left=left,up=False)
         
                     
-    def calculate_fitness(self,genome1,genome2,game_info):
-        genome1.fitness += game_info.left_hits 
-        genome2.fitness += game_info.right_hits 
+    def calculate_fitness(self,genome1,genome2,game_info,duration):
+         # The measurment wil be the relative success of the hits/Total 
+        genome1.fitness += game_info.left_hits + duration
+        genome2.fitness += game_info.right_hits + duration
+        
                 
 def eval_genomes(genomes,config):
+    genome_to_metrics = {}
     # genomes = list (genomeId,genome)
     for i,(genome_id1,genome1) in enumerate(genomes):        
         if i == len(genomes) -1:
@@ -99,13 +106,15 @@ def eval_genomes(genomes,config):
         genome1.fitness = 0
         for genome_id2, genome2 in genomes[i+1:]:
             # Init the fitness in the first time 
-            genome2.fitness = 0 if genome2.fitness == None else genome2.fitness     
+            genome2.fitness = 0 if genome2.fitness == None else genome2.fitness
+         
             game = PongGame(window,width,height)
             game.train_ai(genome1,genome2,config)
+            
         
 def run_neat(config):
-    p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-8')
-    # p = neat.Population(config)
+    # p = neat.Checkpointer.restore_checkpoint('neat-checkpoint-1')
+    p = neat.Population(config)
     # Output to console the data of generation,best fitness and etc 
     p.add_reporter(neat.StdOutReporter(True))
     stats = neat.StatisticsReporter()
